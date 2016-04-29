@@ -62,8 +62,8 @@ data Default = DefaultValue ConstValue
              | DefaultString String
 
 data ConstValue = ConstBooleanLiteral Bool
-                | ConstFloatLiteral Float
-                | ConstInteger Int
+                | ConstFloatLiteral Double
+                | ConstInteger Integer
                 | ConstNull
 
 
@@ -86,12 +86,12 @@ data ArgumentNameKeyword = ArgAttribute    | ArgCallback    | ArgConst        | 
 -- Types
 data Type = TySingleType SingleType | TyUnionType UnionType TypeSuffix
 
-data SingleType = NonAnyType 
-                | AnyType TypeSuffix
+data SingleType = STyNonAny NonAnyType
+                | STyAny TypeSuffix
 
-data NonAnyType = TyPrim PrimitiveType TypeSuffix 
-                | TyDOMString TypeSuffix 
-                | TyIdent Ident TypeSuffix 
+data NonAnyType = TyPrim PrimitiveType TypeSuffix
+                | TyDOMString TypeSuffix
+                | TyIdent Ident TypeSuffix
                 | TySequence Type (Maybe Null)
                 | TyObject TypeSuffix
                 | TyDate TypeSuffix

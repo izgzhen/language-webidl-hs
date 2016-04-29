@@ -1,7 +1,7 @@
 module Parser where
 
 import AST
-
+import Prelude hiding (Enum)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Tok
@@ -11,19 +11,61 @@ type MyParser = CharParser ()
 testParse :: MyParser a -> String -> Either ParseError a
 testParse p = parse p ""
 
-parseDef :: String -> Either ParseError (Definition ())
-parseDef = parse pDef ""
+parseIDL :: String -> Either ParseError [Definition ()]
+parseIDL = parse (many (pDef <* spaces)) ""
 
 pDef :: MyParser (Definition ())
 pDef = DefInterface <$> pInterface
+   <|> DefPartial <$> pPartial
+   <|> DefDictionary <$> pDictionary
+   <|> DefException <$> pException
+   <|> DefEnum <$> pEnum
+   <|> DefTypedef <$> pTypedef
+   <|> DefImplementsStatement <$> pImplementsStatement
 
+pPartial :: MyParser (Partial ())
+pPartial = string "partial" *> spaces *> p
+  where
+    p =     PartialInterface () <$> (string "interface" *> spaces *> pIdent)
+                                <*> braces (many pInterfaceMember) <* semi
+        <|> PartialDictionary () <$> (string "dictionary" *> spaces *> pIdent)
+                                 <*> braces (many pDictionaryMember) <* semi
+
+pDictionary :: MyParser (Dictionary ())
+pDictionary = Dictionary () <$> (string "dictionary" *> spaces *> pIdent)
+                            <*> pMaybeIdent <*> braces (many pDictionaryMember) <* semi
 
 pInterface :: MyParser (Interface ())
-pInterface = Interface () <$> (string "interface" *> pIdent) <*> pMaybeIdent <*> braces (many pInterfaceMember)
+pInterface = Interface () <$> (string "interface" *> spaces *> pIdent)
+                          <*> pMaybeIdent <*> braces (many pInterfaceMember)
+
+pException :: MyParser (Exception ())
+pException = Exception () <$> (string "exception" *> spaces *> pIdent)
+                          <*> pMaybeIdent <*> braces (many pExceptionMember)
+
+pEnum :: MyParser (Enum ())
+pEnum = Enum () <$> (string "enum" *> spaces *> pIdent) <*> braces pEnumValues <* semi
+
+pEnumValues :: MyParser [EnumValue]
+pEnumValues = sepBy1 (EnumValue <$> stringLit) (char ',')
+
+
+pTypedef :: MyParser (Typedef ())
+pTypedef = Typedef () <$> (string "typedef" *> spaces *> pType) <*> pIdent <* semi
+
+pImplementsStatement :: MyParser (ImplementsStatement ())
+pImplementsStatement = ImplementsStatement () <$> pIdent <* spaces
+                                              <*> (string "implements" *> spaces *> pIdent <* semi)
+
+pDictionaryMember :: MyParser (DictionaryMember ())
+pDictionaryMember = DictionaryMember () <$> pType <*> pIdent <*> pDefault <* semi
+
+pExceptionMember :: MyParser (ExceptionMember ())
+pExceptionMember =  ExConst () <$> pConst
+                <|> ExField () <$> pType <*> pIdent <* semi
 
 pMaybeIdent :: MyParser (Maybe Ident)
 pMaybeIdent = pMaybeIdent
-
 
 pInterfaceMember :: MyParser (InterfaceMember ())
 pInterfaceMember =  IMemConst <$> pConst
@@ -94,12 +136,12 @@ pSpecial = string "getter" *> return Getter
        <|> string "legacycaller" *> return Legacycaller
 
 pReturnType :: MyParser ReturnType
-pReturnType = RetType <$> pType
-          <|> string "void" *> return RetVoid
+pReturnType = string "void" *> return RetVoid
+          <|> RetType <$> pType
 
 pConstValue :: MyParser ConstValue
 pConstValue =  ConstBooleanLiteral <$> pBool
-           <|> ConstFloatLiteral <$> pFloat
+           <|> try (ConstFloatLiteral <$> pFloat)
            <|> ConstInteger <$> pInt
            <|> string "null" *> return ConstNull
 
@@ -115,24 +157,24 @@ pEllipsis :: MyParser (Maybe Ellipsis)
 pEllipsis = optionMaybe (string "..." *> return Ellipsis)
 
 pPrimTy :: MyParser PrimitiveType
-pPrimTy = PrimIntegerType <$> pIntegerType
+pPrimTy = try (string "boolean" *> return Boolean)
+      <|> try (string "byte" *> return Byte)
+      <|> try (string "octet" *> return Octet)
+      <|> PrimIntegerType <$> pIntegerType
       <|> PrimFloatType <$> pFloatType
-      <|> string "boolean" *> return Boolean
-      <|> string "byte" *> return Byte
-      <|> string "octet" *> return Octet
 
 pIntegerType :: MyParser IntegerType
-pIntegerType = IntegerType <$> pUnsigned <*> pIntegerWidth
+pIntegerType = IntegerType <$> pUnsigned <* spaces <*> pIntegerWidth
 
 pUnsigned :: MyParser (Maybe Unsigned)
 pUnsigned = optionMaybe (string "unsigned" *> return Unsigned)
 
 pIntegerWidth = string "short" *> return Short
-             <|> Long . length <$> many (string "long")
+             <|> Long . length <$> many1 (string "long" <* spaces)
 
 pFloatType :: MyParser FloatType
-pFloatType =  TyFloat <$> (string "float" *> pUnrestricted)
-          <|> TyDouble <$> (string "double" *> pUnrestricted)
+pFloatType =  TyFloat <$> (string "float" *> spaces *> pUnrestricted)
+          <|> TyDouble <$> (string "double" *> spaces *> pUnrestricted)
 
 pUnrestricted :: MyParser (Maybe Unrestricted)
 pUnrestricted = optionMaybe (string "unrestricted" *> return Unrestricted)
@@ -142,29 +184,28 @@ pType =  TySingleType <$> pSingleType
      <|> TyUnionType <$> pUnionType <*> pTypeSuffix
 
 pSingleType :: MyParser SingleType
-pSingleType =  STyNonAny <$> pNonAnyType 
-           <|> STyAny <$> (string "any" *> pTypeSuffix)
+pSingleType =  STyAny <$> (string "any" *> pTypeSuffix)
+           <|> STyNonAny <$> pNonAnyType
 
 pNonAnyType :: MyParser NonAnyType
 pNonAnyType =  TyPrim <$> pPrimTy <*> pTypeSuffix
-           <|> TyDOMString <$> (string "DOMString" *> pTypeSuffix)
-           <|> TyIdent <$> pIdent <*> pTypeSuffix
-           <|> TySequence <$> (string "sequence" *> angles pType) <*> pNull
+           <|> TySequence <$> (string "sequence" *> spaces *> angles pType) <*> pNull
            <|> TyObject <$> (string "object" *> pTypeSuffix)
+           <|> try (TyDOMString <$> (string "DOMString" *> pTypeSuffix))
            <|> TyDate <$> (string "Date" *> pTypeSuffix)
+           <|> TyIdent <$> pIdent <*> pTypeSuffix
 
 pTypeSuffix :: MyParser TypeSuffix
-pTypeSuffix =  TypeSuffixArray <$> (string "[]" *> pTypeSuffix)
-           <|> TypeSuffixListNullable <$> (string "?" *> pTypeSuffix)
-
+pTypeSuffix =  option TypeSuffixNone $ TypeSuffixArray <$> (spaces *> string "[]" *> pTypeSuffix)
+           <|> TypeSuffixListNullable <$> (spaces *> string "?" *> pTypeSuffix)
 
 pUnionType :: MyParser UnionType
 pUnionType = parens (sepBy1 pUnionMemberType (string "or"))
 
 pUnionMemberType :: MyParser UnionMemberType
-pUnionMemberType =  UnionTy <$> pUnionType <*> pTypeSuffix 
+pUnionMemberType =  UnionTy <$> pUnionType <*> pTypeSuffix
                 <|> UnionTyNonAny <$> pNonAnyType
-                <|> UnionTyAny <$> (string "any [ ]" *> pTypeSuffix)
+                <|> UnionTyAny <$> (string "any []" *> pTypeSuffix)
 
 lexer = Tok.makeTokenParser emptyDef
 

@@ -1,1 +1,5 @@
+// Snippet
+
 typedef unsigned long  GLenum;
+typedef boolean        GLboolean;
+typedef unsigned long  GLbitfield;

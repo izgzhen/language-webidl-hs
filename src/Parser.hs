@@ -4,17 +4,35 @@ import AST
 import Prelude hiding (Enum)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Language (emptyDef)
+import Text.Parsec (modifyState, SourcePos, getPosition, getState, putState, sourceLine)
 import qualified Text.Parsec.Token as Tok
 
-type MyParser = CharParser ()
+data ParserState = ParserState {
+  _comments :: [String]
+}
+
+data Tagging = Tagging {
+  _comment :: [String],
+  _sourcePos :: SourcePos
+}
+
+instance Show Tagging where
+    show (Tagging comments pos) =
+      let line = if length comments > 0 then head comments else ""
+      in  "(" ++ take 5 line ++ "..., " ++ show (sourceLine pos) ++ ")"
+
+initState :: ParserState
+initState = ParserState []
+
+type MyParser = CharParser ParserState
 
 testParse :: MyParser a -> String -> Either ParseError a
-testParse p = parse p ""
+testParse p = runParser p initState "webidl"
 
-parseIDL :: String -> Either ParseError [Definition ()]
-parseIDL = parse (many (pDef <* spaces)) ""
+parseIDL :: String -> Either ParseError [Definition Tagging]
+parseIDL = testParse (pSpaces *> many (pDef <* pSpaces))
 
-pDef :: MyParser (Definition ())
+pDef :: MyParser (Definition Tagging)
 pDef = DefInterface <$> pInterface
    <|> DefPartial <$> pPartial
    <|> DefDictionary <$> pDictionary
@@ -23,64 +41,72 @@ pDef = DefInterface <$> pInterface
    <|> DefTypedef <$> pTypedef
    <|> DefImplementsStatement <$> pImplementsStatement
 
-pPartial :: MyParser (Partial ())
-pPartial = string "partial" *> spaces *> p
+pPartial :: MyParser (Partial Tagging)
+pPartial = string "partial" *> pSpaces *> p
   where
-    p =     PartialInterface () <$> (string "interface" *> spaces *> pIdent)
-                                <*> braces (many pInterfaceMember) <* semi
-        <|> PartialDictionary () <$> (string "dictionary" *> spaces *> pIdent)
-                                 <*> braces (many pDictionaryMember) <* semi
+    p =   PartialInterface <$> getTag <*> (string "interface" *> pSpaces *> pIdent)
+                              <*> braces (many pInterfaceMember) <* semi
+      <|> PartialDictionary <$> getTag <*> (string "dictionary" *> pSpaces *> pIdent)
+                               <*> braces (many pDictionaryMember) <* semi
 
-pDictionary :: MyParser (Dictionary ())
-pDictionary = Dictionary () <$> (string "dictionary" *> spaces *> pIdent)
+pDictionary :: MyParser (Dictionary Tagging)
+pDictionary = Dictionary <$> getTag <*> (string "dictionary" *> pSpaces *> pIdent)
                             <*> pMaybeIdent <*> braces (many pDictionaryMember) <* semi
 
-pInterface :: MyParser (Interface ())
-pInterface = Interface () <$> (string "interface" *> spaces *> pIdent)
+pInterface :: MyParser (Interface Tagging)
+pInterface = Interface <$> getTag <*> (string "interface" *> pSpaces *> pIdent)
                           <*> pMaybeIdent <*> braces (many pInterfaceMember)
 
-pException :: MyParser (Exception ())
-pException = Exception () <$> (string "exception" *> spaces *> pIdent)
+pException :: MyParser (Exception Tagging)
+pException = Exception <$> getTag <*> (string "exception" *> pSpaces *> pIdent)
                           <*> pMaybeIdent <*> braces (many pExceptionMember)
 
-pEnum :: MyParser (Enum ())
-pEnum = Enum () <$> (string "enum" *> spaces *> pIdent) <*> braces pEnumValues <* semi
+pEnum :: MyParser (Enum Tagging)
+pEnum = Enum <$> getTag <*> (string "enum" *> pSpaces *> pIdent) <*> braces pEnumValues <* semi
 
 pEnumValues :: MyParser [EnumValue]
 pEnumValues = sepBy1 (EnumValue <$> stringLit) (char ',')
 
 
-pTypedef :: MyParser (Typedef ())
-pTypedef = Typedef () <$> (string "typedef" *> spaces *> pType) <*> pIdent <* semi
+pTypedef :: MyParser (Typedef Tagging)
+pTypedef = do
+  tag <- getTag
+  string "typedef"
+  pSpaces
+  ty <- try pType
+  pSpaces
+  ident <- pIdent
+  semi
+  return (Typedef tag ty ident)
 
-pImplementsStatement :: MyParser (ImplementsStatement ())
-pImplementsStatement = ImplementsStatement () <$> pIdent <* spaces
-                                              <*> (string "implements" *> spaces *> pIdent <* semi)
+pImplementsStatement :: MyParser (ImplementsStatement Tagging)
+pImplementsStatement = ImplementsStatement <$> getTag <*> pIdent <* pSpaces
+                                              <*> (string "implements" *> pSpaces *> pIdent <* semi)
 
-pDictionaryMember :: MyParser (DictionaryMember ())
-pDictionaryMember = DictionaryMember () <$> pType <*> pIdent <*> pDefault <* semi
+pDictionaryMember :: MyParser (DictionaryMember Tagging)
+pDictionaryMember = DictionaryMember <$> getTag <*> pType <*> pIdent <*> pDefault <* semi
 
-pExceptionMember :: MyParser (ExceptionMember ())
-pExceptionMember =  ExConst () <$> pConst
-                <|> ExField () <$> pType <*> pIdent <* semi
+pExceptionMember :: MyParser (ExceptionMember Tagging)
+pExceptionMember =  ExConst <$> getTag <*> pConst
+                <|> ExField <$> getTag <*> pType <*> pIdent <* semi
 
 pMaybeIdent :: MyParser (Maybe Ident)
-pMaybeIdent = pMaybeIdent
+pMaybeIdent = optionMaybe pIdent
 
-pInterfaceMember :: MyParser (InterfaceMember ())
+pInterfaceMember :: MyParser (InterfaceMember Tagging)
 pInterfaceMember =  IMemConst <$> pConst
                 <|> IMemAttribute <$> pAttribute
                 <|> IMemOperation <$> pOperation
 
-pConst :: MyParser (Const ())
-pConst = Const () <$> (string "const" *> pConstType) <*> (pIdent <* pEq) <*> (pConstValue <* char ';')
+pConst :: MyParser (Const Tagging)
+pConst = Const <$> getTag <*> (string "const" *> pConstType) <*> (pIdent <* pEq) <*> (pConstValue <* char ';')
 
 pConstType :: MyParser ConstType
 pConstType =  ConstPrim <$> pPrimTy <*> pNull
           <|> ConstIdent <$> pIdent <*> pNull
 
-pAttribute :: MyParser (Attribute ())
-pAttribute = Attribute () <$> pInherit <*> pReadOnly <*> (string "attribute" *> pType) <*> (pIdent <* semi)
+pAttribute :: MyParser (Attribute Tagging)
+pAttribute = Attribute <$> getTag <*> pInherit <*> pReadOnly <*> (string "attribute" *> pType) <*> (pIdent <* semi)
 
 pInherit :: MyParser (Maybe Inherit)
 pInherit = optionMaybe (string "inherit" *> return Inherit)
@@ -88,8 +114,8 @@ pInherit = optionMaybe (string "inherit" *> return Inherit)
 pReadOnly :: MyParser (Maybe ReadOnly)
 pReadOnly = optionMaybe (string "readonly" *> return ReadOnly)
 
-pOperation :: MyParser (Operation ())
-pOperation = Operation () <$> pQualifier <*> pReturnType <*> pMaybeIdent <*> parens (many pArg) <* semi
+pOperation :: MyParser (Operation Tagging)
+pOperation = Operation <$> getTag <*> pQualifier <*> pReturnType <*> pMaybeIdent <*> parens (many pArg) <* semi
 
 pArg :: MyParser Argument
 pArg =  ArgOptional <$> (string "optional" *> pType) <*> pArgumentName <*> pDefault
@@ -164,17 +190,17 @@ pPrimTy = try (string "boolean" *> return Boolean)
       <|> PrimFloatType <$> pFloatType
 
 pIntegerType :: MyParser IntegerType
-pIntegerType = IntegerType <$> pUnsigned <* spaces <*> pIntegerWidth
+pIntegerType = IntegerType <$> pUnsigned <* pSpaces <*> pIntegerWidth
 
 pUnsigned :: MyParser (Maybe Unsigned)
 pUnsigned = optionMaybe (string "unsigned" *> return Unsigned)
 
 pIntegerWidth = string "short" *> return Short
-             <|> Long . length <$> many1 (string "long" <* spaces)
+             <|> Long . length <$> many1 (string "long" <* pSpaces)
 
 pFloatType :: MyParser FloatType
-pFloatType =  TyFloat <$> (string "float" *> spaces *> pUnrestricted)
-          <|> TyDouble <$> (string "double" *> spaces *> pUnrestricted)
+pFloatType =  TyFloat <$> (string "float" *> pSpaces *> pUnrestricted)
+          <|> TyDouble <$> (string "double" *> pSpaces *> pUnrestricted)
 
 pUnrestricted :: MyParser (Maybe Unrestricted)
 pUnrestricted = optionMaybe (string "unrestricted" *> return Unrestricted)
@@ -189,15 +215,16 @@ pSingleType =  STyAny <$> (string "any" *> pTypeSuffix)
 
 pNonAnyType :: MyParser NonAnyType
 pNonAnyType =  TyPrim <$> pPrimTy <*> pTypeSuffix
-           <|> TySequence <$> (string "sequence" *> spaces *> angles pType) <*> pNull
+           <|> TySequence <$> (string "sequence" *> pSpaces *> angles pType) <*> pNull
            <|> TyObject <$> (string "object" *> pTypeSuffix)
            <|> try (TyDOMString <$> (string "DOMString" *> pTypeSuffix))
            <|> TyDate <$> (string "Date" *> pTypeSuffix)
            <|> TyIdent <$> pIdent <*> pTypeSuffix
 
 pTypeSuffix :: MyParser TypeSuffix
-pTypeSuffix =  option TypeSuffixNone $ TypeSuffixArray <$> (spaces *> string "[]" *> pTypeSuffix)
-           <|> TypeSuffixListNullable <$> (spaces *> string "?" *> pTypeSuffix)
+pTypeSuffix =  try (TypeSuffixArray <$> (pSpaces *> string "[]" *> pTypeSuffix))
+           <|> try (TypeSuffixListNullable <$> (pSpaces *> string "?" *> pTypeSuffix))
+           <|> return TypeSuffixNone
 
 pUnionType :: MyParser UnionType
 pUnionType = parens (sepBy1 pUnionMemberType (string "or"))
@@ -221,3 +248,27 @@ pFloat     = Tok.float lexer
 semi       = Tok.semi lexer
 stringLit  = Tok.stringLiteral lexer
 pEq        = char '='
+
+pSpaces = try (skipMany (spaces *> pComment <* spaces) <* spaces)
+      <|> spaces
+
+pComment = pLineComment <|> pBlockComment
+
+pLineComment = do
+  string "//"
+  comment <- manyTill anyChar (try newline)
+  modifyState (\ps -> ParserState { _comments = _comments ps ++ [comment]})
+
+pBlockComment = do
+  string "/*"
+  comment <- manyTill anyChar (try (string "*/"))
+  modifyState (\ps -> ParserState { _comments = _comments ps ++ lines comment})
+
+
+getTag :: MyParser Tagging
+getTag = do
+  pos <- getPosition
+  ParserState comments <- getState
+  putState $ ParserState []
+  return $ Tagging comments pos
+

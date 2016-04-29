@@ -1,5 +1,5 @@
-// Snippet
+WebGLRenderingContext implements WebGLRenderingContextBase;
 
-typedef unsigned long  GLenum;
-typedef boolean        GLboolean;
-typedef unsigned long  GLbitfield;
+dictionary WebGLContextEventInit : EventInit {
+    DOMString statusMessage;
+};

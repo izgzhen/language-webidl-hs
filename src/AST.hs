@@ -41,7 +41,7 @@ data InterfaceMember a = IMemConst (Const a)
                        | IMemOperation (Operation a)
                        deriving (Show)
 
-data DictionaryMember a = DictionaryMember a Type Ident Default deriving (Show)
+data DictionaryMember a = DictionaryMember a Type Ident (Maybe Default) deriving (Show)
 
 data ExceptionMember a = ExConst a (Const a)
                        | ExField a Type Ident
@@ -49,7 +49,7 @@ data ExceptionMember a = ExConst a (Const a)
 
 data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show)
 
-data Operation a = Operation a Qualifier ReturnType (Maybe Ident) [Argument] deriving (Show)
+data Operation a = Operation a (Maybe Qualifier) ReturnType (Maybe Ident) [Argument] deriving (Show)
 
 data Argument = ArgOptional Type ArgumentName Default
               | ArgNonOpt Type (Maybe Ellipsis) ArgumentName
@@ -121,8 +121,8 @@ data IntegerType = IntegerType (Maybe Unsigned) IntegerWidth deriving (Show)
 
 data IntegerWidth = Short | Long Int deriving (Show)
 
-data TypeSuffix = TypeSuffixArray TypeSuffix
-                | TypeSuffixListNullable TypeSuffix
+data TypeSuffix = TypeSuffixArray
+                | TypeSuffixNullable
                 | TypeSuffixNone
                 deriving (Show)
 

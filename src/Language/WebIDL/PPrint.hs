@@ -1,8 +1,11 @@
-module PPrint where
+module Language.WebIDL.PPrint where
 
-import AST
+import Language.WebIDL.AST
 import Prelude hiding (Enum)
 import Text.PrettyPrint.Leijen
+
+printDef :: Definition a -> String
+printDef = show . pretty
 
 instance Pretty (Definition a) where
     pretty (DefInterface x) = pretty x
@@ -15,7 +18,7 @@ instance Pretty (Definition a) where
 
 instance Pretty (Interface a) where
     pretty (Interface _ x mInherit members) =
-        text "interface" <+> pretty x <+> prettyInherit mInherit <+> braces (prettyList members) <> semi
+        text "interface" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
 
 prettyMaybe Nothing  _ = empty
 prettyMaybe (Just x) f = f x
@@ -24,20 +27,23 @@ prettyInherit x = prettyMaybe x (\e -> colon <+> pretty e)
 
 instance Pretty (Exception a) where
     pretty (Exception _ x mInherit members) =
-        text "exception" <+> pretty x <+> prettyInherit mInherit <+> braces (prettyList members) <> semi
+        text "exception" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
 
 instance Pretty (Partial a) where
     pretty (PartialInterface _ x members) =
-        text "interface" <+> pretty x <+> braces (prettyList members) <> semi
+        text "interface" <+> pretty x <+> scope members <> semi
     pretty (PartialDictionary _ x members) =
-        text "dictionary" <+> pretty x <+> braces (prettyList members) <> semi
+        text "dictionary" <+> pretty x <+> braces (vsep $ map pretty members) <> semi
 
 instance Pretty (Enum a) where
-    pretty (Enum _ x enums) = text "enum" <+> pretty x <+> braces (prettyList enums) <> semi
+    pretty (Enum _ x enums) = text "enum" <+> pretty x <+> scope enums <> semi
 
 instance Pretty (Dictionary a) where
     pretty (Dictionary _ x mInherit members) =
-        text "dictionary" <+> pretty x <+> prettyInherit mInherit <+> braces (prettyList members) <> semi
+        text "dictionary" <+> pretty x <+> prettyInherit mInherit
+                          <+> scope members <> semi
+
+scope members = braces (line <> vsep (map (indent 4 . pretty) members) <> line)
 
 instance Pretty (Typedef a) where
     pretty (Typedef _ ty ident) = text "typedef" <+> pretty ty <+> pretty ident <> semi
@@ -60,7 +66,7 @@ instance Pretty NonAnyType where
     pretty (TyPrim t suffix) = pretty t <> pretty suffix
     pretty (TyDOMString suffix) = text "DOMString" <> pretty suffix
     pretty (TyIdent ident suffix) = pretty ident <> pretty suffix
-    pretty (TySequence t mNull) = pretty t <> prettyMaybe mNull pretty
+    pretty (TySequence t mNull) = text "sequence" <> angles (pretty t) <> prettyMaybe mNull pretty
     pretty (TyObject suffix) = text "object" <> pretty suffix
     pretty (TyDate suffix) = text "Date" <> pretty suffix
 
@@ -80,7 +86,7 @@ instance Pretty ConstValue where
     pretty ConstNull               = text "null"
 
 instance Pretty Null where
-    pretty Null = text "null"
+    pretty Null = text "?"
 
 instance Pretty TypeSuffix where
     pretty TypeSuffixArray = text "[]"
@@ -95,18 +101,18 @@ instance Pretty PrimitiveType where
     pretty Octet               = text "octet"
 
 instance Pretty FloatType where
-    pretty (TyFloat mUnres)  = text "float" <> prettyMaybe mUnres (\e -> space <> pretty e)
-    pretty (TyDouble mUnres) = text "double" <> prettyMaybe mUnres (\e -> space <> pretty e)
+    pretty (TyFloat mUnres)  = prettyMaybe mUnres (\e -> pretty e <> space) <> text "float"
+    pretty (TyDouble mUnres) = prettyMaybe mUnres (\e -> pretty e <> space) <> text "double"
 
 instance Pretty Unrestricted where
     pretty Unrestricted = text "unrestricted"
 
 instance Pretty IntegerType where
-    pretty (IntegerType mUns width) = prettyMaybe mUns (\e -> pretty e <> space) <> pretty width
+    pretty (IntegerType mUns width) = prettyMaybe mUns pretty <> pretty width
 
 instance Pretty IntegerWidth where
     pretty Short = text "short"
-    pretty (Long i) = foldr (<+>) empty $ take i (repeat (text "long"))
+    pretty (Long i) = hsep $ take i (repeat (text "long"))
 
 instance Pretty Unsigned where
     pretty Unsigned = text "unsigned"
@@ -126,8 +132,8 @@ instance Pretty (InterfaceMember a) where
 
 instance Pretty (Operation a) where
     pretty (Operation _ mQ retty mIdent args) =
-        pretty mQ <> pretty retty <+> prettyMaybe mIdent (\e -> pretty e <> space)
-                  <+> encloseSep lparen rparen (comma <> space) (map pretty args)
+        pretty mQ <> pretty retty <+> prettyMaybe mIdent (\e -> pretty e)
+                  <> parens (hcat (punctuate (comma <> space) (map pretty args))) <> semi
 
 
 instance Pretty Argument where
@@ -168,7 +174,7 @@ instance Pretty ReturnType where
 
 instance Pretty Qualifier where
     pretty QuaStatic = text "static"
-    pretty (QSpecials specials) = prettyList specials
+    pretty (QSpecials specials) = hsep $ map pretty specials
 
 instance Pretty Special where
     pretty Getter = text "getter"
@@ -180,16 +186,17 @@ instance Pretty Special where
 
 instance Pretty (Attribute a) where
     pretty (Attribute _ mInherit mReadOnly t i) =
-        prettyInherit mInherit <+> prettyMaybe mReadOnly pretty <+> pretty t <+> pretty i
+        prettyInherit mInherit <> prettyMaybe mReadOnly pretty
+                               <> text "attribute" <+> pretty t <+> pretty i <> semi
 
 instance Pretty ReadOnly where
-    pretty ReadOnly = text "readonly"
+    pretty ReadOnly = text "readonly" <> space
 
 instance Pretty Inherit where
-    pretty Inherit = text "inherit"
+    pretty Inherit = text "inherit" <> space
 
 instance Pretty (Const a) where
-    pretty (Const _ t i v) = pretty t <+> pretty i <+> equals <+> pretty v <> semi
+    pretty (Const _ t i v) = text "const" <+> pretty t <+> pretty i <+> equals <+> pretty v <> semi
 
 instance Pretty ConstType where
     pretty (ConstPrim ty mNull) = pretty ty <> prettyMaybe mNull pretty

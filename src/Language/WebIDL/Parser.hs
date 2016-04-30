@@ -1,6 +1,6 @@
-module Parser where
+module Language.WebIDL.Parser where
 
-import AST
+import Language.WebIDL.AST
 import Prelude hiding (Enum)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Language (emptyDef)
@@ -16,6 +16,9 @@ data Tagging = Tagging {
   _comment :: [String],
   _sourcePos :: SourcePos
 }
+
+instance Eq Tagging where
+  (==) _ _ = True
 
 instance Show Tagging where
     show (Tagging comments pos) =

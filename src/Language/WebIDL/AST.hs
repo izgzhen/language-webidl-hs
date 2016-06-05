@@ -156,4 +156,4 @@ data Null = Null deriving (Show, Eq)
 data Unsigned = Unsigned deriving (Show, Eq)
 
 -- Ident
-newtype Ident = Ident String deriving (Show, Eq)
+newtype Ident = Ident String deriving (Show, Eq, Ord)

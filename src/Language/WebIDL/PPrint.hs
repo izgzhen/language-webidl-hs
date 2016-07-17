@@ -1,9 +1,17 @@
-module Language.WebIDL.PPrint where
+{-|
+  Module:      Language.WebIDL.PPrint
+  Description: Pretty printer of WebIDL AST
+-}
+
+module Language.WebIDL.PPrint (
+  printDef
+) where
 
 import Language.WebIDL.AST
 import Prelude hiding (Enum)
 import Text.PrettyPrint.Leijen
 
+-- | print definition
 printDef :: Definition a -> String
 printDef = show . pretty
 
@@ -132,7 +140,7 @@ instance Pretty (InterfaceMember a) where
 
 instance Pretty (Operation a) where
     pretty (Operation _ mQ retty mIdent args) =
-        pretty mQ <> pretty retty <+> prettyMaybe mIdent (\e -> pretty e)
+        pretty mQ <> pretty retty <+> prettyMaybe mIdent pretty
                   <> parens (hcat (punctuate (comma <> space) (map pretty args))) <> semi
 
 

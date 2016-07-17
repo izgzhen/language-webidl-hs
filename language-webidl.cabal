@@ -1,5 +1,5 @@
 name:                language-webidl
-version:             0.1.1.1
+version:             0.1.2.0
 synopsis:           Parser and Pretty Printer for WebIDL
 description:
     It is intended to replace the old package

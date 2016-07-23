@@ -12,7 +12,6 @@ import Prelude hiding (Enum)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec (modifyState, SourcePos, getPosition, getState, putState, sourceLine)
-import Control.Monad (void)
 import qualified Text.Parsec.Token as Tok
 
 data ParserState = ParserState {
@@ -97,12 +96,12 @@ pEnumValues = sepBy1 (EnumValue <$> stringLit) (char ',')
 pTypedef :: MyParser (Typedef Tag)
 pTypedef = do
   tag <- getTag
-  string "typedef"
+  _ <- string "typedef"
   pSpaces
   ty <- try pType
   pSpaces
   ident <- pIdent
-  semi
+  _ <- semi
   return (Typedef tag ty ident)
 
 pImplementsStatement :: MyParser (ImplementsStatement Tag)
@@ -224,12 +223,13 @@ pPrimTy = try (string "boolean" *> return Boolean)
 
 pIntegerType :: MyParser IntegerType
 pIntegerType = IntegerType <$> pUnsigned <* pSpaces <*> pIntegerWidth
+  where
+    pIntegerWidth = string "short" *> return Short
+                 <|> Long . length <$> many1 (try (string "long" <* pSpaces))
 
 pUnsigned :: MyParser (Maybe Unsigned)
 pUnsigned = optionMaybe (string "unsigned" *> return Unsigned)
 
-pIntegerWidth = string "short" *> return Short
-             <|> Long . length <$> many1 (try (string "long" <* pSpaces))
 
 pFloatType :: MyParser FloatType
 pFloatType =  try (TyFloat <$> pModifier Unrestricted "unrestricted" <* spaces <* string "float")
@@ -271,9 +271,6 @@ parens     = Tok.parens lexer
 brackets   = Tok.brackets lexer
 braces     = Tok.braces lexer
 angles     = Tok.angles lexer
-reserved   = Tok.reserved lexer
-reservedOp = Tok.reservedOp lexer
-whiteSpace = Tok.whiteSpace lexer
 pIdent     = Ident <$> Tok.identifier lexer
 pInt       = Tok.integer lexer
 pFloat     = Tok.float lexer
@@ -287,12 +284,12 @@ pSpaces = try (skipMany (spaces *> pComment <* spaces) <* spaces)
 pComment = try pLineComment <|> pBlockComment
 
 pLineComment = do
-  string "//"
+  _ <- string "//"
   comment <- manyTill anyChar (try newline)
   modifyState (\ps -> ParserState { _comments = _comments ps ++ [comment]})
 
 pBlockComment = do
-  string "/*"
+  _ <- string "/*"
   comment <- manyTill anyChar (try (string "*/"))
   modifyState (\ps -> ParserState { _comments = _comments ps ++ lines comment})
 

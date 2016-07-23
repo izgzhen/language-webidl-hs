@@ -129,7 +129,7 @@ instance Pretty Unrestricted where
     pretty Unrestricted = text "unrestricted"
 
 instance Pretty IntegerType where
-    pretty (IntegerType mUns width) = prettyMaybe mUns pretty <> pretty width
+    pretty (IntegerType mUns width_) = prettyMaybe mUns pretty <> pretty width_
 
 instance Pretty IntegerWidth where
     pretty Short = text "short"

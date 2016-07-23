@@ -46,7 +46,7 @@ parseIDL :: String -> Either ParseError [Definition Tag]
 parseIDL = testParse (pSpaces *> many1 (pDef <* pSpaces))
 
 pDef :: MyParser (Definition Tag)
-pDef = DefInterface <$> (pExtAttrs *> pInterface)
+pDef = DefInterface <$> pInterface
    <|> DefPartial <$> pPartial
    <|> DefDictionary <$> pDictionary
    <|> DefException <$> pException
@@ -54,10 +54,15 @@ pDef = DefInterface <$> (pExtAttrs *> pInterface)
    <|> DefTypedef <$> pTypedef
    <|> DefImplementsStatement <$> pImplementsStatement
 
--- FIXME: currently we ignore extended attributes
-pExtAttrs :: MyParser ()
-pExtAttrs = pSpaces *> void (char '[' *> (manyTill anyChar (try (char ']')))) <* pSpaces
-        <|> pSpaces
+pExtAttrs :: MyParser [ExtendedAttribute Tag]
+pExtAttrs = pSpaces *> (char '[' *> (manyTill pExtAttr (try (char ']')))) <* pSpaces
+
+pExtAttr :: MyParser (ExtendedAttribute Tag)
+pExtAttr = ExtendedAttributeNoArgs <$> getTag <*> pIdent
+       <|> ExtendedAttributeArgList <$> getTag <*> pIdent <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces))
+       <|> ExtendedAttributeIdent <$> getTag <*> (pIdent <* pEq) <*> pIdent
+       <|> ExtendedAttributeIdentList <$> getTag <*> (pIdent <* pEq) <*> parens (pSpaces *> sepBy (pIdent <* pSpaces) (char ',' <* pSpaces))
+       <|> ExtendedAttributeNamedArgList <$> getTag <*> (pIdent <* pEq) <*> pIdent <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces))
 
 pPartial :: MyParser (Partial Tag)
 pPartial = string "partial" *> pSpaces *> p
@@ -72,8 +77,8 @@ pDictionary = Dictionary <$> getTag <*> (string "dictionary" *> pSpaces *> pIden
                          <*> pInheritance <*> braces (many pDictionaryMember) <* semi
 
 pInterface :: MyParser (Interface Tag)
-pInterface = Interface <$> getTag <*> (string "interface" *> pSpaces *> pIdent)
-                          <*> pInheritance <*> braces (pSpaces *> many (pInterfaceMember <* pSpaces)) <* semi
+pInterface = Interface <$> getTag <*> pExtAttrs <*> (string "interface" *> pSpaces *> pIdent)
+                       <*> pInheritance <*> braces (pSpaces *> many (pInterfaceMember <* pSpaces)) <* semi
 
 pException :: MyParser (Exception Tag)
 pException = Exception <$> getTag <*> (string "exception" *> pSpaces *> pIdent)
@@ -118,7 +123,7 @@ pMaybeIdent = optionMaybe pIdent
 pInterfaceMember :: MyParser (InterfaceMember Tag)
 pInterfaceMember =  try (IMemConst <$> pConst)
                 <|> try (IMemAttribute <$> pAttribute)
-                <|> IMemOperation <$> (pExtAttrs *> pOperation)
+                <|> IMemOperation <$> pOperation
 
 pConst :: MyParser (Const Tag)
 pConst = Const <$> getTag <*> (string "const" *> pSpaces *> pConstType <* pSpaces)
@@ -137,7 +142,7 @@ pModifier :: a -> String -> MyParser (Maybe a)
 pModifier m s = optionMaybe (string s *> pSpaces *> return m)
 
 pOperation :: MyParser (Operation Tag)
-pOperation = Operation <$> getTag <*> pQualifier <* spaces
+pOperation = Operation <$> getTag <*> pExtAttrs <*> pQualifier <* spaces
                        <*> pReturnType <* pSpaces
                        <*> pMaybeIdent <* pSpaces
                        <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces)) <* semi

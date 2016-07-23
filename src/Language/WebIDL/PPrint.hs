@@ -25,8 +25,19 @@ instance Pretty (Definition a) where
     pretty (DefImplementsStatement x) = pretty x
 
 instance Pretty (Interface a) where
-    pretty (Interface _ x mInherit members) =
-        text "interface" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
+    pretty (Interface _ extAttrs x mInherit members) =
+        text "interface" <+> prettyExtAttrs extAttrs <> pretty x <+> prettyInherit mInherit <+> scope members <> semi
+
+prettyExtAttrs :: [ExtendedAttribute a] -> Doc
+prettyExtAttrs [] = empty
+prettyExtAttrs attrs = brackets (hcat (punctuate (comma <> space) (map pretty attrs)))
+
+instance Pretty (ExtendedAttribute a) where
+    pretty (ExtendedAttributeNoArgs _ x) = pretty x
+    pretty (ExtendedAttributeArgList _ x args) = pretty x <> prettyParenList args
+    pretty (ExtendedAttributeIdent _ x y) = pretty x <+> equals <+> pretty y
+    pretty (ExtendedAttributeIdentList _ x ids) = pretty x <+> equals <+> prettyParenList ids
+    pretty (ExtendedAttributeNamedArgList _ x f args) = pretty x <+> equals <+> pretty f <> prettyParenList args
 
 prettyMaybe Nothing  _ = empty
 prettyMaybe (Just x) f = f x
@@ -139,10 +150,12 @@ instance Pretty (InterfaceMember a) where
     pretty (IMemOperation op) = pretty op
 
 instance Pretty (Operation a) where
-    pretty (Operation _ mQ retty mIdent args) =
-        pretty mQ <> pretty retty <+> prettyMaybe mIdent pretty
-                  <> parens (hcat (punctuate (comma <> space) (map pretty args))) <> semi
+    pretty (Operation _ extAttrs mQ retty mIdent args) =
+        prettyExtAttrs extAttrs <+> pretty mQ <> pretty retty <+> prettyMaybe mIdent pretty
+                                <>  prettyParenList args <> semi
 
+prettyParenList :: Pretty a => [a] -> Doc
+prettyParenList args = parens (hcat (punctuate (comma <> space) (map pretty args)))
 
 instance Pretty Argument where
     pretty (ArgOptional t name def) = text "optional" <+> pretty t <+> pretty name <> prettyDefault def

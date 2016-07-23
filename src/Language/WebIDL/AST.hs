@@ -17,8 +17,16 @@ data Definition a = DefInterface (Interface a)
                   | DefImplementsStatement (ImplementsStatement a)
                   deriving (Show, Eq)
 
+-- | Extended attribute
+data ExtendedAttribute a = ExtendedAttributeNoArgs a Ident -- ^ identifier
+                         | ExtendedAttributeArgList a Ident [Argument] -- ^ identifier "(" ArgumentList ")"
+                         | ExtendedAttributeIdent a Ident Ident -- ^ identifier "=" identifier
+                         | ExtendedAttributeIdentList a Ident [Ident] -- ^ identifier "=" "(" IdentifierList ")"
+                         | ExtendedAttributeNamedArgList a Ident Ident [Argument] -- ^ identifier "=" identifier "(" ArgumentList ")"
+                         deriving (Show, Eq)
+
 -- | @interface@
-data Interface a = Interface a Ident (Maybe Ident) [InterfaceMember a] deriving (Show, Eq)
+data Interface a = Interface a [ExtendedAttribute a] Ident (Maybe Ident) [InterfaceMember a] deriving (Show, Eq)
 
 -- | Partial Definition
 data Partial a = PartialInterface a Ident [InterfaceMember a]
@@ -58,7 +66,7 @@ data ExceptionMember a = ExConst a (Const a)
 data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show, Eq)
 
 -- | Operation member of interface
-data Operation a = Operation a (Maybe Qualifier) ReturnType (Maybe Ident) [Argument] deriving (Show, Eq)
+data Operation a = Operation a [ExtendedAttribute a] (Maybe Qualifier) ReturnType (Maybe Ident) [Argument] deriving (Show, Eq)
 
 -- | Argument of operation signature
 data Argument = ArgOptional Type ArgumentName Default

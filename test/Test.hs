@@ -4,15 +4,19 @@ import Language.WebIDL.PPrint
 import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
-main = runTestTT (TestList [TestLabel "test WebGL" testWebGL]) >>= print
+main = runTestTT tests >>= print
 
-testWebGL :: Test
-testWebGL = TestCase $ do
-    text <- liftIO $ readFile "examples/webgl.idl"
+tests :: Test
+tests = TestList [ TestLabel "WebGL" (testIDL "examples/webgl.idl")
+                 , TestLabel "File API" (testIDL "examples/fileapi.idl") ]
+
+testIDL :: FilePath -> Test
+testIDL idlpath = TestCase $ do
+    text <- liftIO $ readFile idlpath
     case parseIDL text of
         Right defs -> do
             let text' = unlines $ map printDef defs
             case parseIDL text' of
                 Right defs' -> assertEqual "Definitions should be equal" defs defs'
-                Left err -> assertFailure ("Incorrect parsing: " ++ show err ++ "\n" ++ text')
-        Left err -> assertFailure ("Incorrect parsing: " ++ show err)
+                Left err -> assertFailure ("Incorrect parsing of regenerated file: " ++ show err ++ "\n" ++ text')
+        Left err -> assertFailure ("Incorrect parsing of original file: " ++ show err)

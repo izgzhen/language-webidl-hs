@@ -4,7 +4,7 @@
 -}
 
 module Language.WebIDL.Parser (
-  Tag(..), parseIDL, testParse
+  Tag(..), parseIDL
 ) where
 
 import Language.WebIDL.AST
@@ -46,7 +46,7 @@ parseIDL :: String -> Either ParseError [Definition Tag]
 parseIDL = testParse (pSpaces *> many1 (pDef <* pSpaces))
 
 pDef :: MyParser (Definition Tag)
-pDef = DefInterface <$> pInterface
+pDef = try (DefInterface <$> pInterface)
    <|> DefPartial <$> pPartial
    <|> DefDictionary <$> pDictionary
    <|> DefException <$> pException
@@ -111,7 +111,7 @@ pImplementsStatement = ImplementsStatement <$> getTag <*> pIdent <* pSpaces
 
 pDictionaryMember :: MyParser (DictionaryMember Tag)
 pDictionaryMember = DictionaryMember <$> getTag <*> pType <* pSpaces
-                                     <*> pIdent <*> optionMaybe (pEq *> pDefault) <* semi
+                                     <*> pIdent <*> pDefault <* semi
 
 pExceptionMember :: MyParser (ExceptionMember Tag)
 pExceptionMember =  ExConst <$> getTag <*> pConst
@@ -136,7 +136,8 @@ pConstType =  ConstPrim <$> pPrimTy <*> pNull
 pAttribute :: MyParser (Attribute Tag)
 pAttribute = Attribute <$> getTag <*> pModifier Inherit "inherit"
                        <*> pModifier ReadOnly "readonly"
-                       <*> (string "attribute" *> pSpaces *> pType) <*> (pSpaces *> pIdent <* semi)
+                       <*> (string "attribute" *> pSpaces *> pType)
+                       <*> (pSpaces *> pIdent <* semi)
 
 pModifier :: a -> String -> MyParser (Maybe a)
 pModifier m s = optionMaybe (string s *> pSpaces *> return m)
@@ -147,9 +148,9 @@ pOperation = Operation <$> getTag <*> pExtAttrs <*> pQualifier <* spaces
                        <*> pMaybeIdent <* pSpaces
                        <*> pParenComma pArg <* semi
 
-pArg :: MyParser Argument
-pArg =  ArgOptional <$> (string "optional" *> pType <* pSpaces) <*> pArgumentName <*> pDefault
-    <|> ArgNonOpt   <$> (pType <* pSpaces) <*> (pModifier Ellipsis "...") <*> (pSpaces *> pArgumentName)
+pArg :: MyParser (Argument Tag)
+pArg =  try (ArgOptional <$> pExtAttrs <*> (string "optional" *> spaces *> pType <* pSpaces) <*> pArgumentName <*> pDefault)
+    <|> ArgNonOpt <$> pExtAttrs <*> (pType <* pSpaces) <*> (pModifier Ellipsis "...") <*> (pSpaces *> pArgumentName)
 
 pArgumentName :: MyParser ArgumentName
 pArgumentName = try (ArgKey <$> pArgumentNameKeyword)
@@ -176,9 +177,12 @@ pArgumentNameKeyword =  string "attribute" *> return ArgAttribute
                     <|> string "typedef" *> return ArgTypedef
                     <|> string "unrestricted" *> return ArgUnrestricted
 
-pDefault :: MyParser Default
-pDefault =  DefaultValue <$> pConstValue
-        <|> DefaultString <$> stringLit
+pDefault :: MyParser (Maybe Default)
+pDefault = Just <$> (spaces *> pEq *> spaces *> pDefault')
+       <|> return Nothing
+  where
+    pDefault' = DefaultValue <$> pConstValue
+            <|> DefaultString <$> stringLit
 
 
 pQualifier :: MyParser (Maybe Qualifier)
@@ -225,7 +229,7 @@ pUnsigned :: MyParser (Maybe Unsigned)
 pUnsigned = optionMaybe (string "unsigned" *> return Unsigned)
 
 pIntegerWidth = string "short" *> return Short
-             <|> Long . length <$> many1 (string "long" <* pSpaces)
+             <|> Long . length <$> many1 (try (string "long" <* pSpaces))
 
 pFloatType :: MyParser FloatType
 pFloatType =  try (TyFloat <$> pModifier Unrestricted "unrestricted" <* spaces <* string "float")
@@ -244,7 +248,7 @@ pNonAnyType =  try (TyPrim <$> pPrimTy <*> pTypeSuffix)
            <|> TySequence <$> (string "sequence" *> pSpaces *> angles pType) <*> pNull
            <|> TyObject <$> (string "object" *> pTypeSuffix)
            <|> try (TyDOMString <$> (string "DOMString" *> pTypeSuffix))
-           <|> TyDate <$> (string "Date" *> pTypeSuffix)
+           <|> try (TyDate <$> (string "Date" *> pTypeSuffix))
            <|> TyIdent <$> pIdent <*> pTypeSuffix
 
 pTypeSuffix :: MyParser TypeSuffix

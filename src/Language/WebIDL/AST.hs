@@ -21,10 +21,10 @@ data Definition a = DefInterface (Interface a)
 
 -- | Extended attribute
 data ExtendedAttribute a = ExtendedAttributeNoArgs a Ident -- ^ identifier
-                         | ExtendedAttributeArgList a Ident [Argument] -- ^ identifier "(" ArgumentList ")"
+                         | ExtendedAttributeArgList a Ident [Argument a] -- ^ identifier "(" ArgumentList ")"
                          | ExtendedAttributeIdent a Ident Ident -- ^ identifier "=" identifier
                          | ExtendedAttributeIdentList a Ident [Ident] -- ^ identifier "=" "(" IdentifierList ")"
-                         | ExtendedAttributeNamedArgList a Ident Ident [Argument] -- ^ identifier "=" identifier "(" ArgumentList ")"
+                         | ExtendedAttributeNamedArgList a Ident Ident [Argument a] -- ^ identifier "=" identifier "(" ArgumentList ")"
                          deriving (Show, Eq, Functor)
 
 -- | @interface@
@@ -69,13 +69,13 @@ data ExceptionMember a = ExConst a (Const a)
 data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show, Eq, Functor)
 
 -- | Operation member of interface
-data Operation a = Operation a [ExtendedAttribute a] (Maybe Qualifier) ReturnType (Maybe Ident) [Argument]
+data Operation a = Operation a [ExtendedAttribute a] (Maybe Qualifier) ReturnType (Maybe Ident) [Argument a]
                  deriving (Show, Eq, Functor)
 
 -- | Argument of operation signature
-data Argument = ArgOptional Type ArgumentName Default
-              | ArgNonOpt Type (Maybe Ellipsis) ArgumentName
-              deriving (Show, Eq)
+data Argument a = ArgOptional [ExtendedAttribute a] Type ArgumentName (Maybe Default)
+                | ArgNonOpt [ExtendedAttribute a] Type (Maybe Ellipsis) ArgumentName
+                deriving (Show, Eq, Functor)
 
 -- | Value of a @enum@
 newtype EnumValue = EnumValue String deriving (Show, Eq)

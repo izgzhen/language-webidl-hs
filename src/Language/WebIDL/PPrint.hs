@@ -159,9 +159,11 @@ instance Pretty (Operation a) where
 prettyParenList :: Pretty a => [a] -> Doc
 prettyParenList args = parens (hcat (punctuate (comma <> space) (map pretty args)))
 
-instance Pretty Argument where
-    pretty (ArgOptional t name def) = text "optional" <+> pretty t <+> pretty name <> prettyDefault def
-    pretty (ArgNonOpt t mElli name) = pretty t <> prettyMaybe mElli (\_ -> text "...") <+> pretty name
+instance Pretty (Argument a) where
+    pretty (ArgOptional extAttrs t name def) =
+        prettyExtAttrs extAttrs space <> text "optional" <+> pretty t <+> pretty name <> prettyMaybe def prettyDefault
+    pretty (ArgNonOpt extAttrs t mElli name) =
+        prettyExtAttrs extAttrs space <> pretty t <> prettyMaybe mElli (\_ -> text "...") <+> pretty name
 
 prettyDefault def = space <> equals <+> pretty def
 

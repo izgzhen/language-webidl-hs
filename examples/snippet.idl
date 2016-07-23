@@ -1,5 +1,0 @@
-WebGLRenderingContext implements WebGLRenderingContextBase;
-
-dictionary WebGLContextEventInit : EventInit {
-    DOMString statusMessage;
-};

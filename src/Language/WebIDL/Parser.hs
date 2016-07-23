@@ -254,7 +254,7 @@ pTypeSuffix =  try (string "[]" *> return TypeSuffixArray)
 
 -- FIXME: Not working correctly currently
 pUnionType :: MyParser UnionType
-pUnionType = parens (sepBy1 pUnionMemberType (string "or"))
+pUnionType = parens (sepBy1 pUnionMemberType (spaces *> string "or" <* spaces))
 
 pUnionMemberType :: MyParser UnionMemberType
 pUnionMemberType =  UnionTy <$> pUnionType <*> pTypeSuffix

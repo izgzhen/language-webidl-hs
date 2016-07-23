@@ -22,8 +22,7 @@ typedef unsigned long  GLuint;
 typedef unrestricted float GLfloat;
 typedef unrestricted float GLclampf;  
 
-
-// typedef (ArrayBuffer or ArrayBufferView) BufferDataSource;
+typedef (ArrayBuffer or ArrayBufferView) BufferDataSource;
 
 dictionary WebGLContextAttributes {
     GLboolean alpha = true;

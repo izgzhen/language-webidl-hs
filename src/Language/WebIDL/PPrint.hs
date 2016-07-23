@@ -75,7 +75,9 @@ instance Pretty Ident where
 
 instance Pretty Type where
     pretty (TySingleType s) = pretty s
-    pretty (TyUnionType ut suffix) = pretty ut <> pretty suffix
+    pretty (TyUnionType ut suffix) = prettyUnionType ut <> pretty suffix
+
+prettyUnionType ut = parens (hcat (punctuate (space <> text "or" <> space) (map pretty ut)))
 
 instance Pretty SingleType where
     pretty (STyNonAny t) = pretty t
@@ -151,7 +153,7 @@ instance Pretty (InterfaceMember a) where
 
 instance Pretty (Operation a) where
     pretty (Operation _ extAttrs mQ retty mIdent args) =
-        prettyExtAttrs extAttrs (char ' ') <> pretty mQ <> pretty retty
+        prettyExtAttrs extAttrs space <> pretty mQ <> pretty retty
             <+> prettyMaybe mIdent pretty <> prettyParenList args <> semi
 
 prettyParenList :: Pretty a => [a] -> Doc

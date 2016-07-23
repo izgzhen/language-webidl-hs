@@ -3,6 +3,8 @@
   Description: Abstract Syntax Tree of WebIDL
 -}
 
+{-# LANGUAGE DeriveFunctor #-}
+
 module Language.WebIDL.AST where
 
 import Prelude hiding (Enum)
@@ -15,7 +17,7 @@ data Definition a = DefInterface (Interface a)
                   | DefEnum (Enum a)
                   | DefTypedef (Typedef a)
                   | DefImplementsStatement (ImplementsStatement a)
-                  deriving (Show, Eq)
+                  deriving (Show, Eq, Functor)
 
 -- | Extended attribute
 data ExtendedAttribute a = ExtendedAttributeNoArgs a Ident -- ^ identifier
@@ -23,50 +25,52 @@ data ExtendedAttribute a = ExtendedAttributeNoArgs a Ident -- ^ identifier
                          | ExtendedAttributeIdent a Ident Ident -- ^ identifier "=" identifier
                          | ExtendedAttributeIdentList a Ident [Ident] -- ^ identifier "=" "(" IdentifierList ")"
                          | ExtendedAttributeNamedArgList a Ident Ident [Argument] -- ^ identifier "=" identifier "(" ArgumentList ")"
-                         deriving (Show, Eq)
+                         deriving (Show, Eq, Functor)
 
 -- | @interface@
-data Interface a = Interface a [ExtendedAttribute a] Ident (Maybe Ident) [InterfaceMember a] deriving (Show, Eq)
+data Interface a = Interface a [ExtendedAttribute a] Ident (Maybe Ident) [InterfaceMember a]
+                 deriving (Show, Eq, Functor)
 
 -- | Partial Definition
 data Partial a = PartialInterface a Ident [InterfaceMember a]
                | PartialDictionary a Ident [DictionaryMember a]
-               deriving (Show, Eq)
+               deriving (Show, Eq, Functor)
 
 -- | @dictionary@
-data Dictionary a = Dictionary a Ident (Maybe Ident) [DictionaryMember a] deriving (Show, Eq)
+data Dictionary a = Dictionary a Ident (Maybe Ident) [DictionaryMember a] deriving (Show, Eq, Functor)
 
 -- | @exception@
-data Exception a = Exception a Ident (Maybe Ident) [ExceptionMember a] deriving (Show, Eq)
+data Exception a = Exception a Ident (Maybe Ident) [ExceptionMember a] deriving (Show, Eq, Functor)
 
 -- | @enum@
-data Enum a = Enum a Ident [EnumValue] deriving (Show, Eq)
+data Enum a = Enum a Ident [EnumValue] deriving (Show, Eq, Functor)
 
 -- | @typedef@
-data Typedef a = Typedef a Type Ident deriving (Show, Eq)
+data Typedef a = Typedef a Type Ident deriving (Show, Eq, Functor)
 
 -- | @implements@ statement
-data ImplementsStatement a = ImplementsStatement a Ident Ident deriving (Show, Eq)
+data ImplementsStatement a = ImplementsStatement a Ident Ident deriving (Show, Eq, Functor)
 
 -- | Member of interface definition
 data InterfaceMember a = IMemConst (Const a)
                        | IMemAttribute (Attribute a)
                        | IMemOperation (Operation a)
-                       deriving (Show, Eq)
+                       deriving (Show, Eq, Functor)
 
 -- | Member of dictionary
-data DictionaryMember a = DictionaryMember a Type Ident (Maybe Default) deriving (Show, Eq)
+data DictionaryMember a = DictionaryMember a Type Ident (Maybe Default) deriving (Show, Eq, Functor)
 
 -- | Member of exception definition
 data ExceptionMember a = ExConst a (Const a)
                        | ExField a Type Ident
-                       deriving (Show, Eq)
+                       deriving (Show, Eq, Functor)
 
 -- | Attribute member of interface
-data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show, Eq)
+data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show, Eq, Functor)
 
 -- | Operation member of interface
-data Operation a = Operation a [ExtendedAttribute a] (Maybe Qualifier) ReturnType (Maybe Ident) [Argument] deriving (Show, Eq)
+data Operation a = Operation a [ExtendedAttribute a] (Maybe Qualifier) ReturnType (Maybe Ident) [Argument]
+                 deriving (Show, Eq, Functor)
 
 -- | Argument of operation signature
 data Argument = ArgOptional Type ArgumentName Default
@@ -81,7 +85,7 @@ data ArgumentName = ArgKey ArgumentNameKeyword
                   | ArgIdent Ident
                   deriving (Show, Eq)
 -- | @const@
-data Const a = Const a ConstType Ident ConstValue deriving (Show, Eq)
+data Const a = Const a ConstType Ident ConstValue deriving (Show, Eq, Functor)
 
 -- | @default@ specification
 data Default = DefaultValue ConstValue

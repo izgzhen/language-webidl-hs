@@ -26,11 +26,11 @@ instance Pretty (Definition a) where
 
 instance Pretty (Interface a) where
     pretty (Interface _ extAttrs x mInherit members) =
-        text "interface" <+> prettyExtAttrs extAttrs <> pretty x <+> prettyInherit mInherit <+> scope members <> semi
+        prettyExtAttrs extAttrs line <> text "interface" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
 
-prettyExtAttrs :: [ExtendedAttribute a] -> Doc
-prettyExtAttrs [] = empty
-prettyExtAttrs attrs = brackets (hcat (punctuate (comma <> space) (map pretty attrs)))
+prettyExtAttrs :: [ExtendedAttribute a] -> Doc -> Doc
+prettyExtAttrs [] _ = empty
+prettyExtAttrs attrs delimiter = brackets (hcat (punctuate (comma <> space) (map pretty attrs))) <> delimiter
 
 instance Pretty (ExtendedAttribute a) where
     pretty (ExtendedAttributeNoArgs _ x) = pretty x
@@ -151,8 +151,8 @@ instance Pretty (InterfaceMember a) where
 
 instance Pretty (Operation a) where
     pretty (Operation _ extAttrs mQ retty mIdent args) =
-        prettyExtAttrs extAttrs <+> pretty mQ <> pretty retty <+> prettyMaybe mIdent pretty
-                                <>  prettyParenList args <> semi
+        prettyExtAttrs extAttrs (char ' ') <> pretty mQ <> pretty retty
+            <+> prettyMaybe mIdent pretty <> prettyParenList args <> semi
 
 prettyParenList :: Pretty a => [a] -> Doc
 prettyParenList args = parens (hcat (punctuate (comma <> space) (map pretty args)))

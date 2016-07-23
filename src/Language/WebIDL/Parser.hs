@@ -4,7 +4,7 @@
 -}
 
 module Language.WebIDL.Parser (
-  Tag(..), parseIDL
+  Tag(..), parseIDL, testParse
 ) where
 
 import Language.WebIDL.AST
@@ -55,14 +55,15 @@ pDef = DefInterface <$> pInterface
    <|> DefImplementsStatement <$> pImplementsStatement
 
 pExtAttrs :: MyParser [ExtendedAttribute Tag]
-pExtAttrs = pSpaces *> (char '[' *> (manyTill pExtAttr (try (char ']')))) <* pSpaces
+pExtAttrs = try (brackets (pSpaces *> sepBy (pExtAttr <* pSpaces) (char ',' <* pSpaces)))
+        <|> return []
 
 pExtAttr :: MyParser (ExtendedAttribute Tag)
-pExtAttr = ExtendedAttributeNoArgs <$> getTag <*> pIdent
-       <|> ExtendedAttributeArgList <$> getTag <*> pIdent <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces))
-       <|> ExtendedAttributeIdent <$> getTag <*> (pIdent <* pEq) <*> pIdent
-       <|> ExtendedAttributeIdentList <$> getTag <*> (pIdent <* pEq) <*> parens (pSpaces *> sepBy (pIdent <* pSpaces) (char ',' <* pSpaces))
-       <|> ExtendedAttributeNamedArgList <$> getTag <*> (pIdent <* pEq) <*> pIdent <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces))
+pExtAttr = try (ExtendedAttributeNamedArgList <$> getTag <*> (pIdent <* pEq) <*> pIdent <*> pParenComma pArg)
+       <|> try (ExtendedAttributeArgList <$> getTag <*> pIdent <*> pParenComma pArg)
+       <|> try (ExtendedAttributeIdent <$> getTag <*> (pIdent <* pEq) <*> pIdent)
+       <|> try (ExtendedAttributeIdentList <$> getTag <*> (pIdent <* pEq) <*> pParenComma pIdent)
+       <|> ExtendedAttributeNoArgs <$> getTag <*> pIdent
 
 pPartial :: MyParser (Partial Tag)
 pPartial = string "partial" *> pSpaces *> p
@@ -93,7 +94,6 @@ pEnum = Enum <$> getTag <*> (string "enum" *> pSpaces *> pIdent) <*> braces pEnu
 pEnumValues :: MyParser [EnumValue]
 pEnumValues = sepBy1 (EnumValue <$> stringLit) (char ',')
 
-
 pTypedef :: MyParser (Typedef Tag)
 pTypedef = do
   tag <- getTag
@@ -111,7 +111,7 @@ pImplementsStatement = ImplementsStatement <$> getTag <*> pIdent <* pSpaces
 
 pDictionaryMember :: MyParser (DictionaryMember Tag)
 pDictionaryMember = DictionaryMember <$> getTag <*> pType <* pSpaces
-                                     <*> pIdent <*> optionMaybe (spaces *> pEq *> spaces *> pDefault) <* semi
+                                     <*> pIdent <*> optionMaybe (pEq *> pDefault) <* semi
 
 pExceptionMember :: MyParser (ExceptionMember Tag)
 pExceptionMember =  ExConst <$> getTag <*> pConst
@@ -145,7 +145,7 @@ pOperation :: MyParser (Operation Tag)
 pOperation = Operation <$> getTag <*> pExtAttrs <*> pQualifier <* spaces
                        <*> pReturnType <* pSpaces
                        <*> pMaybeIdent <* pSpaces
-                       <*> parens (pSpaces *> sepBy (pArg <* pSpaces) (char ',' <* pSpaces)) <* semi
+                       <*> pParenComma pArg <* semi
 
 pArg :: MyParser Argument
 pArg =  ArgOptional <$> (string "optional" *> pType <* pSpaces) <*> pArgumentName <*> pDefault
@@ -264,6 +264,7 @@ pUnionMemberType =  UnionTy <$> pUnionType <*> pTypeSuffix
 lexer = Tok.makeTokenParser emptyDef
 
 parens     = Tok.parens lexer
+brackets   = Tok.brackets lexer
 braces     = Tok.braces lexer
 angles     = Tok.angles lexer
 reserved   = Tok.reserved lexer
@@ -274,7 +275,7 @@ pInt       = Tok.integer lexer
 pFloat     = Tok.float lexer
 semi       = Tok.semi lexer
 stringLit  = Tok.stringLiteral lexer
-pEq        = char '='
+pEq        = spaces *> char '=' <* spaces
 
 pSpaces = try (skipMany (spaces *> pComment <* spaces) <* spaces)
       <|> spaces
@@ -297,3 +298,6 @@ getTag = do
   ParserState comments <- getState
   putState $ ParserState []
   return $ Tag comments pos
+
+pParenComma :: MyParser a -> MyParser [a]
+pParenComma p = parens (pSpaces *> sepBy (p <* pSpaces) (char ',' <* pSpaces))

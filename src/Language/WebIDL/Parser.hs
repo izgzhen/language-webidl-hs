@@ -4,8 +4,12 @@
 -}
 
 module Language.WebIDL.Parser (
-  Tag(..), parseIDL
-) where
+  Tag(..), MyParser, ParserState, parseIDL, tryParse, pDef, pExtAttrs, pExtAttr, pPartial, pDictionary,
+  pInterface, pException, pInheritance, pEnum, pEnumValues, pTypedef, pImplementsStatement,
+  pDictionaryMember, pExceptionMember, pMaybeIdent, pInterfaceMember, pConst, pConstType,
+  pAttribute, pOperation, pArg, pArgumentName, pArgumentNameKeyword, pDefault, pQualifier,
+  pSpecial, pReturnType, pConstValue, pBool, pNull, pPrimTy, pIntegerType, pUnsigned, pFloatType,
+  pType, pSingleType, pNonAnyType, pTypeSuffix, pUnionType, pUnionMemberType ) where
 
 import Language.WebIDL.AST
 import Prelude hiding (Enum)
@@ -37,12 +41,12 @@ initState = ParserState []
 
 type MyParser = CharParser ParserState
 
-testParse :: MyParser a -> String -> Either ParseError a
-testParse p = runParser p initState "webidl"
+tryParse :: MyParser a -> String -> Either ParseError a
+tryParse p = runParser p initState "webidl"
 
 -- | parse IDL source
 parseIDL :: String -> Either ParseError [Definition Tag]
-parseIDL = testParse (pSpaces *> many1 (pDef <* pSpaces))
+parseIDL = tryParse (pSpaces *> many1 (pDef <* pSpaces))
 
 pDef :: MyParser (Definition Tag)
 pDef = try (DefInterface <$> pInterface)

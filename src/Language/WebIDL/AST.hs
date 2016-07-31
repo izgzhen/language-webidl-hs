@@ -16,6 +16,7 @@ data Definition a = DefInterface (Interface a)
                   | DefException (Exception a)
                   | DefEnum (Enum a)
                   | DefTypedef (Typedef a)
+                  | DefCallback (Callback a)
                   | DefImplementsStatement (ImplementsStatement a)
                   deriving (Show, Eq, Functor)
 
@@ -35,6 +36,9 @@ data Interface a = Interface a [ExtendedAttribute a] Ident (Maybe Ident) [Interf
 data Partial a = PartialInterface a Ident [InterfaceMember a]
                | PartialDictionary a Ident [DictionaryMember a]
                deriving (Show, Eq, Functor)
+
+-- | Callback functions
+data Callback a = Callback a Ident ReturnType [Argument a] deriving (Show, Eq, Functor)
 
 -- | @dictionary@
 data Dictionary a = Dictionary a Ident (Maybe Ident) [DictionaryMember a] deriving (Show, Eq, Functor)

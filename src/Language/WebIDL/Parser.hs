@@ -50,12 +50,19 @@ parseIDL = tryParse (pSpaces *> many1 (pDef <* pSpaces))
 
 pDef :: MyParser (Definition Tag)
 pDef = try (DefInterface <$> pInterface)
+   <|> DefCallback <$> pCallback
    <|> DefPartial <$> pPartial
    <|> DefDictionary <$> pDictionary
    <|> DefException <$> pException
    <|> DefEnum <$> pEnum
    <|> DefTypedef <$> pTypedef
    <|> DefImplementsStatement <$> pImplementsStatement
+
+pCallback :: MyParser (Callback Tag)
+pCallback = Callback <$> (string "callback" *> pSpaces *> getTag)
+                     <*> pIdent
+                     <*> (pEq *> pReturnType <* pSpaces)
+                     <*> pParenComma pArg
 
 pExtAttrs :: MyParser [ExtendedAttribute Tag]
 pExtAttrs = try (brackets (pSpaces *> sepBy (pExtAttr <* pSpaces) (char ',' <* pSpaces)))

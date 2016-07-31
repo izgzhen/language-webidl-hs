@@ -8,7 +8,8 @@ main = runTestTT tests >>= print
 
 tests :: Test
 tests = TestList [ TestLabel "WebGL" (testIDL "examples/webgl.idl")
-                 , TestLabel "File API" (testIDL "examples/fileapi.idl") ]
+                 , TestLabel "File API" (testIDL "examples/fileapi.idl")
+                 , TestLabel "Callback" (testIDL "examples/callback.idl") ]
 
 testIDL :: FilePath -> Test
 testIDL idlpath = TestCase $ do

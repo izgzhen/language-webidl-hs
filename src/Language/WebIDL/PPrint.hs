@@ -23,10 +23,15 @@ instance Pretty (Definition a) where
     pretty (DefEnum x) = pretty x
     pretty (DefTypedef x) = pretty x
     pretty (DefImplementsStatement x) = pretty x
+    pretty (DefCallback x) = pretty x
 
 instance Pretty (Interface a) where
     pretty (Interface _ extAttrs x mInherit members) =
         prettyExtAttrs extAttrs line <> text "interface" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
+
+instance Pretty (Callback a) where
+    pretty (Callback _ f retty args) = text "callback" <+> pretty f <+>
+                                       equals <+> pretty retty <+> prettyParenList args
 
 prettyExtAttrs :: [ExtendedAttribute a] -> Doc -> Doc
 prettyExtAttrs [] _ = empty

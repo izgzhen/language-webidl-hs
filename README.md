@@ -10,3 +10,6 @@ Haskell with parser combinators.
 The AST node is parametric, so you can put anything in it. In the parser provided in this
 package, the extra field records the adjacent comments and `SourcePos`. But you can `fmap`
 on the extra field to customize.
+
+Also, most AST node parsers are exposed in `Language.WebIDL.Parser` module, so you
+can reuse and compose these snippet freely.

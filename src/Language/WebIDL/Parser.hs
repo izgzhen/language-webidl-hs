@@ -9,7 +9,8 @@ module Language.WebIDL.Parser (
   pDictionaryMember, pExceptionMember, pMaybeIdent, pInterfaceMember, pConst, pConstType,
   pAttribute, pOperation, pArg, pArgumentName, pArgumentNameKeyword, pDefault, pQualifier,
   pSpecial, pReturnType, pConstValue, pBool, pNull, pPrimTy, pIntegerType, pUnsigned, pFloatType,
-  pType, pSingleType, pNonAnyType, pTypeSuffix, pUnionType, pUnionMemberType ) where
+  pType, pSingleType, pNonAnyType, pTypeSuffix, pUnionType, pUnionMemberType,
+  pIdent, spaces, pParenComma, pString, pStringEnds, string, parens) where
 
 import Language.WebIDL.AST
 import Prelude hiding (Enum)
@@ -62,7 +63,7 @@ pCallback :: MyParser (Callback Tag)
 pCallback = Callback <$> (string "callback" *> pSpaces *> getTag)
                      <*> pIdent
                      <*> (pEq *> pReturnType <* pSpaces)
-                     <*> pParenComma pArg
+                     <*> pParenComma pArg <* semi
 
 pExtAttrs :: MyParser [ExtendedAttribute Tag]
 pExtAttrs = try (brackets (pSpaces *> sepBy (pExtAttr <* pSpaces) (char ',' <* pSpaces)))
@@ -313,3 +314,9 @@ getTag = do
 
 pParenComma :: MyParser a -> MyParser [a]
 pParenComma p = parens (pSpaces *> sepBy (p <* pSpaces) (char ',' <* pSpaces))
+
+pString :: MyParser String
+pString = many anyChar
+
+pStringEnds :: String -> MyParser String
+pStringEnds s = manyTill anyChar (try (string s))

@@ -1,8 +1,9 @@
 name:               language-webidl
-version:            0.1.4.0
+version:            0.1.4.1
 synopsis:           Parser and Pretty Printer for WebIDL
 description:
-    Written with parsec and wl-pprint.
+    Written with parsec and wl-pprint. Functor AST.
+    Reusable node parser.
     See <http://www.w3.org/TR/WebIDL/> for reference.
 license:             MIT
 license-file:        LICENSE

@@ -4,7 +4,7 @@
 -}
 
 module Language.WebIDL.Parser (
-  Tag(..), MyParser, ParserState, Comment, parseIDL, tryParse, pDef, pExtAttrs, pExtAttr, pPartial, pDictionary,
+  Tag(..), MyParser, ParserState, Comment(..), parseIDL, tryParse, pDef, pExtAttrs, pExtAttr, pPartial, pDictionary,
   pInterface, pException, pInheritance, pEnum, pEnumValues, pTypedef, pImplementsStatement,
   pDictionaryMember, pExceptionMember, pMaybeIdent, pInterfaceMember, pConst, pConstType,
   pAttribute, pOperation, pArg, pArgumentName, pArgumentNameKeyword, pDefault, pQualifier,
@@ -19,7 +19,7 @@ import Text.Parsec.Language (emptyDef)
 import Text.Parsec (modifyState, SourcePos, getPosition, getState, putState, sourceLine)
 import qualified Text.Parsec.Token as Tok
 
-data Comment = LineComment String | BlockComment String
+data Comment = LineComment String | BlockComment String deriving Show
 
 data ParserState = ParserState {
   _comments' :: [Comment]
@@ -33,10 +33,6 @@ data Tag = Tag {
 
 instance Eq Tag where
   (==) _ _ = True
-
-instance Show Comment where
-  show (LineComment l) = show l
-  show (BlockComment s) = show (take 5 s) ++ "..."
 
 instance Show Tag where
     show (Tag comment pos) = show comment ++ "(" ++ show (sourceLine pos) ++ ")"

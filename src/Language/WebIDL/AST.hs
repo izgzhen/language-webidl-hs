@@ -13,7 +13,6 @@ import Prelude hiding (Enum)
 data Definition a = DefInterface (Interface a)
                   | DefPartial (Partial a)
                   | DefDictionary (Dictionary a)
-                  | DefException (Exception a)
                   | DefEnum (Enum a)
                   | DefTypedef (Typedef a)
                   | DefCallback (Callback a)
@@ -111,34 +110,33 @@ data Qualifier = QuaStatic
 -- | Special qualifier
 data Special = Getter 
              | Setter 
-             | Ccreator 
              | Deleter 
-             | Legacycaller
+             | LegacyCaller
              deriving (Show, Eq)
 
 -- | Argument name keyword
 data ArgumentNameKeyword = ArgAttribute    | ArgCallback    | ArgConst        | ArgCreator
                          | ArgDeleter      | ArgDictionary  | ArgEnum         | ArgException
                          | ArgGetter       | ArgImplements  | ArgInherit      | ArgInterface
-                         | ArgLegacycaller | ArgPartial     | ArgSetter       | ArgStatic
+                         | ArgLegacyCaller | ArgPartial     | ArgSetter       | ArgStatic
                          | ArgStringifier  | ArgTypedef     | ArgUnrestricted
                          deriving (Show, Eq)
 
 -- | Types
-data Type = TySingleType SingleType | TyUnionType UnionType TypeSuffix deriving (Show, Eq)
+data Type = TySingleType SingleType | TyUnionType UnionType (Maybe Null) deriving (Show, Eq)
 
 -- | Single type
 data SingleType = STyNonAny NonAnyType
-                | STyAny TypeSuffix
+                | STyAny (Maybe Null)
                 deriving (Show, Eq)
 
 -- | Types that is not @any@
-data NonAnyType = TyPrim PrimitiveType TypeSuffix
-                | TyDOMString TypeSuffix
-                | TyIdent Ident TypeSuffix
+data NonAnyType = TyPrim PrimitiveType (Maybe Null)
+                | TyDOMString (Maybe Null)
+                | TyIdent Ident (Maybe Null)
                 | TySequence Type (Maybe Null)
-                | TyObject TypeSuffix
-                | TyDate TypeSuffix
+                | TyObject (Maybe Null)
+                | TyDate (Maybe Null)
                 deriving (Show, Eq)
 
 -- | Primitive type
@@ -158,12 +156,6 @@ data IntegerWidth = Short | Long Int deriving (Show, Eq)
 -- | @unsigned@ modifier
 data Unsigned = Unsigned deriving (Show, Eq)
 
--- | Suffix of type
-data TypeSuffix = TypeSuffixArray
-                | TypeSuffixNullable
-                | TypeSuffixNone
-                deriving (Show, Eq)
-
 -- | Float type
 data FloatType = TyFloat (Maybe Unrestricted)
                | TyDouble (Maybe Unrestricted)
@@ -173,9 +165,8 @@ data FloatType = TyFloat (Maybe Unrestricted)
 type UnionType = [UnionMemberType]
 
 -- | Union member type
-data UnionMemberType = UnionTy UnionType TypeSuffix 
+data UnionMemberType = UnionTy UnionType (Maybe Null)
                      | UnionTyNonAny NonAnyType
-                     | UnionTyAny TypeSuffix
                      deriving (Show, Eq)
 
 -- | Return value's type

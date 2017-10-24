@@ -5,11 +5,11 @@
 
 module Language.WebIDL.Parser (
   Tag(..), MyParser, ParserState, Comment(..), parseIDL, tryParse, pDef, pExtAttrs, pExtAttr, pPartial, pDictionary,
-  pInterface, pException, pInheritance, pEnum, pEnumValues, pTypedef, pImplementsStatement,
-  pDictionaryMember, pExceptionMember, pMaybeIdent, pInterfaceMember, pConst, pConstType,
+  pInterface, pInheritance, pEnum, pEnumValues, pTypedef, pImplementsStatement,
+  pDictionaryMember, pMaybeIdent, pInterfaceMember, pConst, pConstType,
   pAttribute, pOperation, pArg, pArgumentName, pArgumentNameKeyword, pDefault, pQualifier,
   pSpecial, pReturnType, pConstValue, pBool, pNull, pPrimTy, pIntegerType, pUnsigned, pFloatType,
-  pType, pSingleType, pNonAnyType, pTypeSuffix, pUnionType, pUnionMemberType,
+  pType, pSingleType, pNonAnyType, pUnionType, pUnionMemberType,
   pIdent, spaces, pParenComma, pString, pStringEnds, string, parens) where
 
 import Language.WebIDL.AST
@@ -54,7 +54,6 @@ pDef = try (DefInterface <$> pInterface)
    <|> DefCallback <$> pCallback
    <|> DefPartial <$> pPartial
    <|> DefDictionary <$> pDictionary
-   <|> DefException <$> pException
    <|> DefEnum <$> pEnum
    <|> DefTypedef <$> pTypedef
    <|> DefImplementsStatement <$> pImplementsStatement
@@ -92,10 +91,6 @@ pInterface :: MyParser (Interface Tag)
 pInterface = Interface <$> getTag <*> pExtAttrs <*> (string "interface" *> pSpaces *> pIdent)
                        <*> pInheritance <*> braces (pSpaces *> many (pInterfaceMember <* pSpaces)) <* semi
 
-pException :: MyParser (Exception Tag)
-pException = Exception <$> getTag <*> (string "exception" *> pSpaces *> pIdent)
-                          <*> pInheritance <*> braces (many pExceptionMember)
-
 pInheritance :: MyParser (Maybe Ident)
 pInheritance = optionMaybe (spaces *> char ':'  *> spaces *> pIdent)
 
@@ -123,10 +118,6 @@ pImplementsStatement = ImplementsStatement <$> getTag <*> pIdent <* pSpaces
 pDictionaryMember :: MyParser (DictionaryMember Tag)
 pDictionaryMember = DictionaryMember <$> getTag <*> pType <* pSpaces
                                      <*> pIdent <*> pDefault <* semi
-
-pExceptionMember :: MyParser (ExceptionMember Tag)
-pExceptionMember =  ExConst <$> getTag <*> pConst
-                <|> ExField <$> getTag <*> pType <*> pIdent <* semi
 
 pMaybeIdent :: MyParser (Maybe Ident)
 pMaybeIdent = optionMaybe pIdent
@@ -180,7 +171,7 @@ pArgumentNameKeyword =  string "attribute" *> return ArgAttribute
                     <|> string "implements" *> return ArgImplements
                     <|> string "inherit" *> return ArgInherit
                     <|> string "interface" *> return ArgInterface  
-                    <|> string "legacycaller" *> return ArgLegacycaller
+                    <|> string "legacycaller" *> return ArgLegacyCaller
                     <|> string "partial" *> return ArgPartial
                     <|> string "setter" *> return ArgSetter
                     <|> string "static" *> return ArgStatic 
@@ -204,9 +195,8 @@ pQualifier =  try (string "static" *> return (Just QuaStatic))
 pSpecial :: MyParser Special
 pSpecial = string "getter" *> return Getter
        <|> string "setter" *> return Setter
-       <|> string "ccreator" *> return Ccreator
        <|> string "deleter" *> return Deleter
-       <|> string "legacycaller" *> return Legacycaller
+       <|> string "legacycaller" *> return LegacyCaller
 
 pReturnType :: MyParser ReturnType
 pReturnType = string "void" *> return RetVoid
@@ -249,33 +239,27 @@ pFloatType =  try (TyFloat <$> pModifier Unrestricted "unrestricted" <* spaces <
 
 pType :: MyParser Type
 pType =  TySingleType <$> pSingleType
-     <|> TyUnionType <$> pUnionType <*> pTypeSuffix
+     <|> TyUnionType <$> pUnionType <*> pNull
 
 pSingleType :: MyParser SingleType
-pSingleType =  STyAny <$> (string "any" *> pTypeSuffix)
+pSingleType =  STyAny <$> (string "any" *> pNull)
            <|> STyNonAny <$> pNonAnyType
 
 pNonAnyType :: MyParser NonAnyType
-pNonAnyType =  try (TyPrim <$> pPrimTy <*> pTypeSuffix)
+pNonAnyType =  try (TyPrim <$> pPrimTy <*> pNull)
            <|> TySequence <$> (string "sequence" *> pSpaces *> angles pType) <*> pNull
-           <|> TyObject <$> (string "object" *> pTypeSuffix)
-           <|> try (TyDOMString <$> (string "DOMString" *> pTypeSuffix))
-           <|> try (TyDate <$> (string "Date" *> pTypeSuffix))
-           <|> TyIdent <$> pIdent <*> pTypeSuffix
-
-pTypeSuffix :: MyParser TypeSuffix
-pTypeSuffix =  try (string "[]" *> return TypeSuffixArray)
-           <|> try (char '?' *> return TypeSuffixNullable)
-           <|> return TypeSuffixNone
+           <|> TyObject <$> (string "object" *> pNull)
+           <|> try (TyDOMString <$> (string "DOMString" *> pNull))
+           <|> try (TyDate <$> (string "Date" *> pNull))
+           <|> TyIdent <$> pIdent <*> pNull
 
 -- FIXME: Not working correctly currently
 pUnionType :: MyParser UnionType
 pUnionType = parens (sepBy1 pUnionMemberType (spaces *> string "or" <* spaces))
 
 pUnionMemberType :: MyParser UnionMemberType
-pUnionMemberType =  UnionTy <$> pUnionType <*> pTypeSuffix
+pUnionMemberType =  UnionTy <$> pUnionType <*> pNull
                 <|> UnionTyNonAny <$> pNonAnyType
-                <|> UnionTyAny <$> (string "any []" *> pTypeSuffix)
 
 lexer = Tok.makeTokenParser emptyDef
 

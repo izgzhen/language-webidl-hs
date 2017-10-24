@@ -19,7 +19,6 @@ instance Pretty (Definition a) where
     pretty (DefInterface x) = pretty x
     pretty (DefPartial x) = pretty x
     pretty (DefDictionary x) = pretty x
-    pretty (DefException x) = pretty x
     pretty (DefEnum x) = pretty x
     pretty (DefTypedef x) = pretty x
     pretty (DefImplementsStatement x) = pretty x
@@ -31,7 +30,7 @@ instance Pretty (Interface a) where
 
 instance Pretty (Callback a) where
     pretty (Callback _ f retty args) = text "callback" <+> pretty f <+>
-                                       equals <+> pretty retty <+> prettyParenList args
+                                       equals <+> pretty retty <+> prettyParenList args <> semi
 
 prettyExtAttrs :: [ExtendedAttribute a] -> Doc -> Doc
 prettyExtAttrs [] _ = empty
@@ -48,10 +47,6 @@ prettyMaybe Nothing  _ = empty
 prettyMaybe (Just x) f = f x
 
 prettyInherit x = prettyMaybe x (\e -> colon <+> pretty e)
-
-instance Pretty (Exception a) where
-    pretty (Exception _ x mInherit members) =
-        text "exception" <+> pretty x <+> prettyInherit mInherit <+> scope members <> semi
 
 instance Pretty (Partial a) where
     pretty (PartialInterface _ x members) =
@@ -80,21 +75,21 @@ instance Pretty Ident where
 
 instance Pretty Type where
     pretty (TySingleType s) = pretty s
-    pretty (TyUnionType ut suffix) = prettyUnionType ut <> pretty suffix
+    pretty (TyUnionType ut mNull) = prettyUnionType ut <> prettyMaybe mNull pretty
 
 prettyUnionType ut = parens (hcat (punctuate (space <> text "or" <> space) (map pretty ut)))
 
 instance Pretty SingleType where
     pretty (STyNonAny t) = pretty t
-    pretty (STyAny suffix) = text "any" <> pretty suffix
+    pretty (STyAny mNull) = text "any" <> prettyMaybe mNull pretty
 
 instance Pretty NonAnyType where
-    pretty (TyPrim t suffix) = pretty t <> pretty suffix
-    pretty (TyDOMString suffix) = text "DOMString" <> pretty suffix
-    pretty (TyIdent ident suffix) = pretty ident <> pretty suffix
+    pretty (TyPrim t mNull) = pretty t <> prettyMaybe mNull pretty
+    pretty (TyDOMString mNull) = text "DOMString" <> prettyMaybe mNull pretty
+    pretty (TyIdent ident mNull) = pretty ident <> prettyMaybe mNull pretty
     pretty (TySequence t mNull) = text "sequence" <> angles (pretty t) <> prettyMaybe mNull pretty
-    pretty (TyObject suffix) = text "object" <> pretty suffix
-    pretty (TyDate suffix) = text "Date" <> pretty suffix
+    pretty (TyObject mNull) = text "object" <> prettyMaybe mNull pretty
+    pretty (TyDate mNull) = text "Date" <> prettyMaybe mNull pretty
 
 
 instance Pretty (DictionaryMember a) where
@@ -113,11 +108,6 @@ instance Pretty ConstValue where
 
 instance Pretty Null where
     pretty Null = text "?"
-
-instance Pretty TypeSuffix where
-    pretty TypeSuffixArray = text "[]"
-    pretty TypeSuffixNullable = text "?"
-    pretty TypeSuffixNone = empty
 
 instance Pretty PrimitiveType where
     pretty (PrimIntegerType t) = pretty t
@@ -144,9 +134,8 @@ instance Pretty Unsigned where
     pretty Unsigned = text "unsigned"
 
 instance Pretty UnionMemberType where
-    pretty (UnionTy ut suffix) = pretty ut <> pretty suffix
+    pretty (UnionTy ut mNull) = pretty ut <> prettyMaybe mNull pretty
     pretty (UnionTyNonAny t) = pretty t
-    pretty (UnionTyAny suffix) = text "any" <> pretty suffix
 
 instance Pretty EnumValue where
     pretty (EnumValue s) = text s
@@ -189,7 +178,7 @@ instance Pretty ArgumentNameKeyword where
     pretty ArgImplements = text "implements"
     pretty ArgInherit = text "inherit"
     pretty ArgInterface   = text "interface"
-    pretty ArgLegacycaller = text "legacycaller"
+    pretty ArgLegacyCaller = text "legacycaller"
     pretty ArgPartial = text "partial"
     pretty ArgSetter = text "setter"
     pretty ArgStatic  = text "static"
@@ -209,9 +198,8 @@ instance Pretty Qualifier where
 instance Pretty Special where
     pretty Getter = text "getter"
     pretty Setter = text "setter"
-    pretty Ccreator = text "ccreator"
     pretty Deleter = text "deleter"
-    pretty Legacycaller = text "legacycaller"
+    pretty LegacyCaller = text "legacycaller"
 
 
 instance Pretty (Attribute a) where

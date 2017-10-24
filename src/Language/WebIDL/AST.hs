@@ -42,9 +42,6 @@ data Callback a = Callback a Ident ReturnType [Argument a] deriving (Show, Eq, F
 -- | @dictionary@
 data Dictionary a = Dictionary a Ident (Maybe Ident) [DictionaryMember a] deriving (Show, Eq, Functor)
 
--- | @exception@
-data Exception a = Exception a Ident (Maybe Ident) [ExceptionMember a] deriving (Show, Eq, Functor)
-
 -- | @enum@
 data Enum a = Enum a Ident [EnumValue] deriving (Show, Eq, Functor)
 
@@ -62,11 +59,6 @@ data InterfaceMember a = IMemConst (Const a)
 
 -- | Member of dictionary
 data DictionaryMember a = DictionaryMember a Type Ident (Maybe Default) deriving (Show, Eq, Functor)
-
--- | Member of exception definition
-data ExceptionMember a = ExConst a (Const a)
-                       | ExField a Type Ident
-                       deriving (Show, Eq, Functor)
 
 -- | Attribute member of interface
 data Attribute a = Attribute a (Maybe Inherit) (Maybe ReadOnly) Type Ident deriving (Show, Eq, Functor)
@@ -115,28 +107,31 @@ data Special = Getter
              deriving (Show, Eq)
 
 -- | Argument name keyword
-data ArgumentNameKeyword = ArgAttribute    | ArgCallback    | ArgConst        | ArgCreator
-                         | ArgDeleter      | ArgDictionary  | ArgEnum         | ArgException
+data ArgumentNameKeyword = ArgAttribute    | ArgCallback    | ArgConst        | ArgIterable
+                         | ArgDeleter      | ArgDictionary  | ArgEnum
                          | ArgGetter       | ArgImplements  | ArgInherit      | ArgInterface
                          | ArgLegacyCaller | ArgPartial     | ArgSetter       | ArgStatic
                          | ArgStringifier  | ArgTypedef     | ArgUnrestricted
                          deriving (Show, Eq)
 
 -- | Types
-data Type = TySingleType SingleType | TyUnionType UnionType (Maybe Null) deriving (Show, Eq)
+data Type = TySingleType SingleType (Maybe Null) | TyUnionType UnionType (Maybe Null) deriving (Show, Eq)
 
 -- | Single type
 data SingleType = STyNonAny NonAnyType
-                | STyAny (Maybe Null)
+                | STyAny
                 deriving (Show, Eq)
 
 -- | Types that is not @any@
-data NonAnyType = TyPrim PrimitiveType (Maybe Null)
-                | TyDOMString (Maybe Null)
-                | TyIdent Ident (Maybe Null)
-                | TySequence Type (Maybe Null)
-                | TyObject (Maybe Null)
-                | TyDate (Maybe Null)
+data NonAnyType = TyPrim PrimitiveType
+                | TyByteString
+                | TyDOMString
+                | TyUSVString
+                | TyIdent Ident
+                | TySequence Type
+                | TyObject
+                | TyError
+                | TyDate
                 deriving (Show, Eq)
 
 -- | Primitive type
@@ -166,7 +161,7 @@ type UnionType = [UnionMemberType]
 
 -- | Union member type
 data UnionMemberType = UnionTy UnionType (Maybe Null)
-                     | UnionTyNonAny NonAnyType
+                     | UnionTyNonAny NonAnyType (Maybe Null)
                      deriving (Show, Eq)
 
 -- | Return value's type

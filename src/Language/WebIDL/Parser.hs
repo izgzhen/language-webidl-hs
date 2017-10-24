@@ -162,11 +162,10 @@ pArgumentNameKeyword :: MyParser ArgumentNameKeyword
 pArgumentNameKeyword =  string "attribute" *> return ArgAttribute
                     <|> string "callback" *> return ArgCallback
                     <|> string "const" *> return ArgConst
-                    <|> string "creator" *> return ArgCreator
+                    <|> string "iterable" *> return ArgIterable
                     <|> string "deleter" *> return ArgDeleter
                     <|> string "dictionary" *> return ArgDictionary
                     <|> string "enum" *> return ArgEnum
-                    <|> string "exception" *> return ArgException  
                     <|> string "getter" *> return ArgGetter
                     <|> string "implements" *> return ArgImplements
                     <|> string "inherit" *> return ArgInherit
@@ -238,20 +237,23 @@ pFloatType =  try (TyFloat <$> pModifier Unrestricted "unrestricted" <* spaces <
           <|> TyDouble <$> pModifier Unrestricted "unrestricted" <* spaces <* string "double"
 
 pType :: MyParser Type
-pType =  TySingleType <$> pSingleType
+pType =  TySingleType <$> pSingleType <*> pNull
      <|> TyUnionType <$> pUnionType <*> pNull
 
 pSingleType :: MyParser SingleType
-pSingleType =  STyAny <$> (string "any" *> pNull)
+pSingleType =  string "any" *> return STyAny
            <|> STyNonAny <$> pNonAnyType
 
 pNonAnyType :: MyParser NonAnyType
-pNonAnyType =  try (TyPrim <$> pPrimTy <*> pNull)
-           <|> TySequence <$> (string "sequence" *> pSpaces *> angles pType) <*> pNull
-           <|> TyObject <$> (string "object" *> pNull)
-           <|> try (TyDOMString <$> (string "DOMString" *> pNull))
-           <|> try (TyDate <$> (string "Date" *> pNull))
-           <|> TyIdent <$> pIdent <*> pNull
+pNonAnyType =  try (TyPrim <$> pPrimTy)
+           <|> TySequence <$> (string "sequence" *> pSpaces *> angles pType)
+           <|> string "object" *> return TyObject
+           <|> try (string "DOMString" *> return TyDOMString)
+           <|> try (string "USVString" *> return TyUSVString)
+           <|> try (string "ByteString" *> return TyByteString)
+           <|> try (string "Error" *> return TyError)
+           <|> try (string "Date" *> return TyDate)
+           <|> TyIdent <$> pIdent
 
 -- FIXME: Not working correctly currently
 pUnionType :: MyParser UnionType
@@ -259,7 +261,7 @@ pUnionType = parens (sepBy1 pUnionMemberType (spaces *> string "or" <* spaces))
 
 pUnionMemberType :: MyParser UnionMemberType
 pUnionMemberType =  UnionTy <$> pUnionType <*> pNull
-                <|> UnionTyNonAny <$> pNonAnyType
+                <|> UnionTyNonAny <$> pNonAnyType <*> pNull
 
 lexer = Tok.makeTokenParser emptyDef
 

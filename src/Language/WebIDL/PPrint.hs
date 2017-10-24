@@ -74,23 +74,25 @@ instance Pretty Ident where
     pretty (Ident x) = text x
 
 instance Pretty Type where
-    pretty (TySingleType s) = pretty s
+    pretty (TySingleType s mNull) = pretty s <> prettyMaybe mNull pretty
     pretty (TyUnionType ut mNull) = prettyUnionType ut <> prettyMaybe mNull pretty
 
 prettyUnionType ut = parens (hcat (punctuate (space <> text "or" <> space) (map pretty ut)))
 
 instance Pretty SingleType where
     pretty (STyNonAny t) = pretty t
-    pretty (STyAny mNull) = text "any" <> prettyMaybe mNull pretty
+    pretty STyAny = text "any"
 
 instance Pretty NonAnyType where
-    pretty (TyPrim t mNull) = pretty t <> prettyMaybe mNull pretty
-    pretty (TyDOMString mNull) = text "DOMString" <> prettyMaybe mNull pretty
-    pretty (TyIdent ident mNull) = pretty ident <> prettyMaybe mNull pretty
-    pretty (TySequence t mNull) = text "sequence" <> angles (pretty t) <> prettyMaybe mNull pretty
-    pretty (TyObject mNull) = text "object" <> prettyMaybe mNull pretty
-    pretty (TyDate mNull) = text "Date" <> prettyMaybe mNull pretty
-
+    pretty (TyPrim t) = pretty t
+    pretty TyDOMString = text "DOMString"
+    pretty TyUSVString = text "USVString"
+    pretty TyByteString = text "ByteString"
+    pretty TyError = text "Error"
+    pretty (TyIdent ident) = pretty ident
+    pretty (TySequence t) = text "sequence" <> angles (pretty t)
+    pretty TyObject = text "object"
+    pretty TyDate = text "Date"
 
 instance Pretty (DictionaryMember a) where
     pretty (DictionaryMember _ t ident mDefault) =
@@ -135,7 +137,7 @@ instance Pretty Unsigned where
 
 instance Pretty UnionMemberType where
     pretty (UnionTy ut mNull) = pretty ut <> prettyMaybe mNull pretty
-    pretty (UnionTyNonAny t) = pretty t
+    pretty (UnionTyNonAny t mNull) = pretty t <> prettyMaybe mNull pretty
 
 instance Pretty EnumValue where
     pretty (EnumValue s) = text s
@@ -169,11 +171,10 @@ instance Pretty ArgumentNameKeyword where
     pretty ArgAttribute = text "attribute"
     pretty ArgCallback = text "callback"
     pretty ArgConst = text "const"
-    pretty ArgCreator = text "creator"
     pretty ArgDeleter = text "deleter"
     pretty ArgDictionary = text "dictionary"
     pretty ArgEnum = text "enum"
-    pretty ArgException   = text "exception"
+    pretty ArgIterable = text "iterable"
     pretty ArgGetter = text "getter"
     pretty ArgImplements = text "implements"
     pretty ArgInherit = text "inherit"
@@ -219,7 +220,3 @@ instance Pretty (Const a) where
 instance Pretty ConstType where
     pretty (ConstPrim ty mNull) = pretty ty <> prettyMaybe mNull pretty
     pretty (ConstIdent i mNull) = pretty i <> prettyMaybe mNull pretty
-
-instance Pretty (ExceptionMember a) where
-    pretty (ExConst _ c) = pretty c
-    pretty (ExField _ t i) = pretty t <+> pretty i <> semi

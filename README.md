@@ -1,6 +1,8 @@
 language-webidl-hs
 =====
 
+This project is suspended unless someone is willing to take it over.
+
 ## Introduction
 
 Parser and Pretty-printer for WebIDL in Haskell.
